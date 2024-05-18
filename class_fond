@@ -1,0 +1,564 @@
+import tkinter as tk
+from tkinter import StringVar, Toplevel, Entry, Listbox, ttk, END, Text
+
+class TriednyFond:
+    def __init__(self, root) -> None:
+        self.root = root
+
+        self.root.title("Triedny Fond")
+        self.root.geometry("500x500")
+
+        self.zapis_triedy()
+        self.vyber_pridaj_triedu()
+
+        self.root.mainloop()
+
+    def je_cislo(self,cislo):
+        return cislo.isnumeric()
+    
+    def je_meno(self, meno):
+        return meno.isalpha()
+
+    def pridaj_triedu(self):
+        top = Toplevel(root)
+        top.title("Pridaj")
+        x_pos = root.winfo_x() + 200  
+        y_pos = root.winfo_y() + 200
+        top.geometry(f"+{x_pos}+{y_pos}")
+        top.geometry("150x100")
+
+        menotriedy = tk.Label(
+            master=top,
+            text="Meno triedy"
+        )
+        menotriedy.pack()
+
+        meno = StringVar()
+        triedameno = tk.Entry(
+            master=top,
+            textvariable=meno
+        )
+        triedameno.pack()
+
+        def zapis_vytvor_triedu():
+            meno_triedy = meno.get()
+            #print(meno_triedy)
+            top.destroy()
+            
+            if meno_triedy == "":
+                return
+            
+            if meno_triedy in self.infotriedy:
+                top2 = Toplevel(root)
+                top2.title("")
+                x_pos = root.winfo_x() + 200  
+                y_pos = root.winfo_y() + 200
+                top2.geometry(f"+{x_pos}+{y_pos}")
+                top2.geometry("150x50")
+
+                lbl = tk.Label(
+                    master=top2,
+                    text="Tato trieda tam uz je"
+                )
+                lbl.pack()
+                return
+
+            with open('triedy.txt', "a", encoding="utf-8") as f:
+                f.write(f'{meno_triedy}\n')
+
+            meno_triedyTXT = meno_triedy + ".txt"
+
+            with open(meno_triedyTXT, "w"):
+                pass
+
+            self.zapis_triedy()
+            self.vyber_pridaj_triedu()
+
+        pridaj = tk.Button(
+            master=top,
+            text="Pridat",
+            command=zapis_vytvor_triedu,
+        )
+        pridaj.pack()
+
+    def zapis_triedy(self):
+        with open('triedy.txt', 'a') as p:
+            pass
+
+        with open('triedy.txt', 'r') as f:
+            inf = f.readlines()
+
+            self.infotriedy = [i.strip() for i in inf]
+            #print(self.infotriedy)
+
+    def vyber_pridaj_triedu(self):
+        TriedaLbl = tk.Label(
+            text="Vyber Triedu: "
+        )
+        TriedaLbl.place(x=1, y=1)
+
+        self.n = tk.StringVar()
+        self.triedy = ttk.Combobox(width=10, textvariable=self.n, state="readonly")
+        self.triedy['values'] = [""] + self.infotriedy
+        self.triedy.place(x=80, y=1)
+        self.triedy.current(0)
+
+        self.triedy.bind('<<ComboboxSelected>>', self.zobrazinfo)
+
+        btn = tk.Button(
+            text="Pridaj triedu",
+            width=10,
+            height=1,
+            command=self.pridaj_triedu
+        )
+        btn.place(x=200,y=0)
+
+    def widgety(self):
+        self.vyberbt = tk.Button(
+            text="vyber",
+            height=5,
+            width=10,
+            command=self.vyber
+        )
+        self.vyberbt.place(x=400, y=150)
+
+        self.vkladbt = tk.Button(
+            text="vklad",
+            height=5,
+            width=10,
+            command=self.vklad
+        )
+        self.vkladbt.place(x=400, y=25)
+
+        self.infotext = Text( # da sa to riesit aj Labelom, nebude to pekne
+            wrap=tk.WORD, 
+            font=("Arial", (13)),
+            state="disabled",
+            height=20,  # kolko riadkov
+            width=10   # kolko charakterov moze byt v 1 riadku
+        )
+        self.infotext.place(x=7, y=50)
+
+        self.celkovotext = Text(
+            wrap=tk.WORD,
+            font=('Arial', (13)),
+            height=1,
+            width=13 
+        )
+        self.celkovotext.place(x=7,y=450)
+
+        self.porovnat = tk.Button(
+            text="porovnanie",
+            command=self.porovnanie,
+            height=5,
+            width=10
+        )
+        self.porovnat.place(x=400,y=275)
+
+    def zobrazinfo(self, event):
+        selectnuta = self.triedy.get()
+        selectnuta = selectnuta.strip()
+
+        self.p = (f'{selectnuta}'+".txt").strip()
+
+        if selectnuta in self.infotriedy:
+            self.widgety()
+        
+        elif selectnuta == "":
+            self.widgety()
+
+            self.stav = []
+            self.show()
+
+            self.vkladbt.config(state="disabled")
+            self.vyberbt.config(state="disabled")
+            self.porovnat.config(state="disabled")
+
+        if self.p == ".txt": # keby nahodou by niekto klikol na tu prazdnu moznost aby to nevyhodilo error
+            return           # da sa aj cez try: except
+        
+        with open (self.p, 'r') as e:
+            bal = e.readlines()
+
+            bal2 = [i.strip() for i in bal if not i.startswith("Celkovo")] # nemusi tam byt (if not i.startswith("Celkovo")) kedze v txt suboroch tam to uz nie je
+            self.stav = []
+            for riadok in bal2:
+                casti = riadok.split(",")  
+                meno = casti[0]
+                hodnota = int(casti[1])
+                self.stav.append([meno, hodnota])
+
+        self.show()
+        self.celkovo()
+
+    def porovnanie(self):
+        self.topporovnanie = Toplevel(root)
+        self.topporovnanie.title("Porovnaj")
+        self.topporovnanie.title("Dopln Info")
+        x_pos = root.winfo_x() + 200  
+        y_pos = root.winfo_y() + 200
+        self.topporovnanie.geometry(f"+{x_pos}+{y_pos}")
+        self.topporovnanie.geometry("230x200")
+
+        self.n2 = tk.StringVar()
+        self.triedy2 = ttk.Combobox(self.topporovnanie, width=10, textvariable=self.n2, state="readonly")
+        self.triedy2['values'] = [""] + self.infotriedy
+        self.triedy2.place(x=3, y=3)
+        self.triedy2.current(0)
+        self.triedy2.bind('<<ComboboxSelected>>', self.ziskajtriedy)
+
+        self.n3 = tk.StringVar()
+        self.triedy3 = ttk.Combobox(self.topporovnanie, width=10, textvariable=self.n3, state="readonly")
+        self.triedy3['values'] = [""] + self.infotriedy
+        self.triedy3.place(x=144, y=3)
+        self.triedy3.current(0)
+        self.triedy3.bind('<<ComboboxSelected>>', self.ziskajtriedy)
+
+        porovnajbtn = tk.Button(
+            master=self.topporovnanie,
+            text="Porovnaj",
+            command=self.porovnaj
+        )
+        porovnajbtn.place(x=90,y=150)
+
+    def ziskajtriedy(self, event):
+        self.prva = self.triedy2.get()
+        self.druha = self.triedy3.get()
+
+    def celkovo_pre_triedu(self,trieda):
+        file = (f'{trieda}'+".txt").replace(" ","")
+
+        with open (file, 'r') as e:
+            bal = e.readlines()
+
+            bal2 = [i.strip() for i in bal if not i.startswith("Celkovo")]
+            self.stav = []
+            for riadok in bal2:
+                casti = riadok.split(",")  
+                meno = casti[0]
+                hodnota = int(casti[1])
+                self.stav.append([meno, hodnota])
+
+        celkovo = 0
+        for i in range(len(self.stav)):
+            celkovo += int(self.stav[i][1])
+
+        return celkovo
+
+    def porovnaj(self):
+        vysledok_text = ""
+
+        self.prva = self.prva.strip()
+        self.druha = self.druha.strip()
+
+        if self.prva == "":
+            if self.druha == "":
+                top2 = Toplevel(root)
+                top2.title("")
+                x_pos = root.winfo_x() + 200  
+                y_pos = root.winfo_y() + 200
+                top2.geometry(f"+{x_pos}+{y_pos}")
+                top2.geometry("200x30")
+
+                lbl = tk.Label(
+                    master=top2,
+                    text="Obidve triedy neboli zadane"
+                )
+                lbl.pack()
+                return
+
+        if self.prva == "":
+            top2 = Toplevel(self.topporovnanie)
+            top2.title("")
+            x_pos = root.winfo_x() + 200  
+            y_pos = root.winfo_y() + 200
+            top2.geometry(f"+{x_pos}+{y_pos}")
+            top2.geometry("200x30")
+
+            lbl = tk.Label(
+                master=top2,
+                text="Prva trieda nebola zadana"
+            )
+            lbl.pack()
+            return
+        
+        if self.druha == "":
+            top2 = Toplevel(self.topporovnanie)
+            top2.title("")
+            x_pos = root.winfo_x() + 200  
+            y_pos = root.winfo_y() + 200
+            top2.geometry(f"+{x_pos}+{y_pos}")
+            top2.geometry("200x30")
+
+            lbl = tk.Label(
+                master=top2,
+                text="Druha trieda nebola zadana"
+            )
+            lbl.pack()
+            return
+
+        if self.celkovo_pre_triedu(self.prva) > self.celkovo_pre_triedu(self.druha):
+            vysledok_text = f"{self.prva} je lepsia"
+
+        elif self.celkovo_pre_triedu(self.prva) < self.celkovo_pre_triedu(self.druha):
+            vysledok_text = f"{self.druha} je lepsia"
+
+        elif self.celkovo_pre_triedu(self.prva) == self.celkovo_pre_triedu(self.druha):
+            vysledok_text = "Zadaj dve ine triedy"
+
+        top = Toplevel(self.topporovnanie)
+        x_pos = root.winfo_x() + 250  
+        y_pos = root.winfo_y() + 250
+        top.geometry(f"+{x_pos}+{y_pos}")
+        top.geometry("100x100")
+
+        vysledok_var = StringVar()
+        vysledok_var.set(vysledok_text)
+
+        vysledok = tk.Label(
+            textvariable=vysledok_var,
+            master=top
+        )
+        vysledok.pack(expand=True)
+
+    def show(self):
+        self.infotext.config(state="normal")
+        self.infotext.delete(1.0, END)  # clear existing content
+
+        for item in self.stav:
+            self.infotext.insert(END, f"{item[0]}: {item[1]}\n")
+
+        self.infotext.config(state="disabled")
+
+    def vklad(self):
+        top = Toplevel(root)
+        top.title("Dopln Info")
+        x_pos = root.winfo_x() + 200  
+        y_pos = root.winfo_y() + 200
+        top.geometry(f"+{x_pos}+{y_pos}")
+        top.geometry("200x200")
+
+        name_label = tk.Label(top, text="Meno:")
+        name_label.pack()
+
+        name_var = StringVar()
+        name_box = Entry(top, textvariable=name_var)
+        name_box.pack()
+
+        value_label = tk.Label(top, text="Kolko:")
+        value_label.pack()
+
+        value_var = StringVar()
+        value_box = Entry(top, textvariable=value_var)
+        value_box.pack()
+
+        def get_entry_values():
+            new_name = name_var.get()
+            new_value = value_var.get()
+            top.destroy()
+            
+            clovek_existuje = False
+
+            if not self.je_meno(new_name):
+                if not self.je_cislo(new_value):
+                    top2 = Toplevel(root)
+                    top2.title("")
+                    x_pos = root.winfo_x() + 200  
+                    y_pos = root.winfo_y() + 200
+                    top2.geometry(f"+{x_pos}+{y_pos}")
+                    top2.geometry("200x30")
+
+                    lbl = tk.Label(
+                        master=top2,
+                        text="Zadajte spravne hodnotu a meno"
+                    )
+                    lbl.pack()
+                    return                    
+
+            if not self.je_cislo(new_value):
+                top2 = Toplevel(root)
+                top2.title("")
+                x_pos = root.winfo_x() + 200  
+                y_pos = root.winfo_y() + 200
+                top2.geometry(f"+{x_pos}+{y_pos}")
+                top2.geometry("200x30")
+
+                lbl = tk.Label(
+                    master=top2,
+                    text="Hodnota nebola cislo"
+                )
+                lbl.pack()
+                return
+            
+            if not self.je_meno(new_name):
+                top2 = Toplevel(root)
+                top2.title("")
+                x_pos = root.winfo_x() + 200  
+                y_pos = root.winfo_y() + 200
+                top2.geometry(f"+{x_pos}+{y_pos}")
+                top2.geometry("200x30")
+
+                lbl = tk.Label(
+                    master=top2,
+                    text="Meno nebolo len z pismen"
+                )
+                lbl.pack()
+                return
+            
+            for i in range(len(self.stav)):
+                if new_name == self.stav[i][0]:
+                    clovek_existuje = True
+                    self.stav[i][1] += int(new_value)
+                    break
+
+            if not clovek_existuje:
+                self.stav.append([new_name, int(new_value)])
+
+            with open(self.p, "w") as e:
+                for clovek in self.stav:
+                    e.write(f"{clovek[0]},{clovek[1]}\n")
+
+            self.show()
+            self.celkovo()
+
+        entry_button = tk.Button(top, text="Vloz", command=get_entry_values)
+        entry_button.pack()
+
+    def vyber(self):
+        top = Toplevel(root)
+        top.title("Dopln Info")
+        x_pos = root.winfo_x() + 200  
+        y_pos = root.winfo_y() + 200
+        top.geometry(f"+{x_pos}+{y_pos}")
+        top.geometry("200x200")
+
+        name_label = tk.Label(top, text="Meno:")
+        name_label.pack()
+
+        name_var = StringVar()
+        name_box = Entry(top, textvariable=name_var)
+        name_box.pack()
+
+        value_label = tk.Label(top, text="Kolko:")
+        value_label.pack()
+
+        value_var = StringVar()
+        value_box = Entry(top, textvariable=value_var)
+        value_box.pack()
+
+        def get_entry_values():
+            new_name = name_var.get()
+            new_value = value_var.get()
+            top.destroy()
+
+            clovek_existuje = False
+
+            if not self.je_meno(new_name):
+                if not self.je_cislo(new_value):
+                    top2 = Toplevel(root)
+                    top2.title("")
+                    x_pos = root.winfo_x() + 200  
+                    y_pos = root.winfo_y() + 200
+                    top2.geometry(f"+{x_pos}+{y_pos}")
+                    top2.geometry("200x30")
+
+                    lbl = tk.Label(
+                        master=top2,
+                        text="Zadajte spravne hodnotu a meno"
+                    )
+                    lbl.pack()
+                    return                    
+
+            if not self.je_cislo(new_value):
+                top2 = Toplevel(root)
+                top2.title("")
+                x_pos = root.winfo_x() + 200  
+                y_pos = root.winfo_y() + 200
+                top2.geometry(f"+{x_pos}+{y_pos}")
+                top2.geometry("200x30")
+
+                lbl = tk.Label(
+                    master=top2,
+                    text="Hodnota nebola cislo"
+                )
+                lbl.pack()
+                return
+            
+            if not self.je_meno(new_name):
+                top2 = Toplevel(root)
+                top2.title("")
+                x_pos = root.winfo_x() + 200  
+                y_pos = root.winfo_y() + 200
+                top2.geometry(f"+{x_pos}+{y_pos}")
+                top2.geometry("200x30")
+
+                lbl = tk.Label(
+                    master=top2,
+                    text="Meno nebolo len z pismen"
+                )
+                lbl.pack()
+                return
+
+
+            for i in range(len(self.stav)):
+                if new_name == self.stav[i][0]:
+
+                    clovek_existuje = True
+            
+                    if self.stav[i][1] - int(new_value) < 0:
+
+                        top2 = Toplevel(root)
+                        x_pos = root.winfo_x() + 250  
+                        y_pos = root.winfo_y() + 250
+                        top2.geometry(f"+{x_pos}+{y_pos}")
+                        top2.geometry("200x30")
+
+                        info = tk.Label(
+                            master=top2,
+                            text="Tento clovek nema az tolko penazi"
+                        )
+                        info.pack()
+
+                    elif self.stav[i][1] - int(new_value) > 0:
+                        self.stav[i][1] = self.stav[i][1] - int(new_value)
+
+                    elif self.stav[i][1] - int(new_value) == 0:
+                        self.stav.pop(i)
+
+            if not clovek_existuje:
+                top2 = Toplevel(root)
+                x_pos = root.winfo_x() + 250  
+                y_pos = root.winfo_y() + 250
+                top2.geometry(f"+{x_pos}+{y_pos}")
+                top2.geometry("200x30")
+
+                info = tk.Label(
+                    master=top2,
+                    text="Tento clovek tu nie je"
+                )
+                info.pack()
+
+            with open(self.p,"w") as e:
+                for clovek in self.stav:
+                    e.write(f"{clovek[0]},{clovek[1]}\n")
+
+            self.show()
+            self.celkovo()
+
+        entry_button = tk.Button(top, text="Vyber", command=get_entry_values)
+        entry_button.pack()    
+    
+    def celkovo(self):
+        celkovo = 0
+        for i in range(len(self.stav)):
+            celkovo += int(self.stav[i][1])
+
+        CELOK = ["Celkovo:", celkovo]
+
+        self.celkovotext.config(state="normal")
+        self.celkovotext.delete(1.0, END)
+        self.celkovotext.insert(END, f"{CELOK[0]} {CELOK[1]}\n")
+        self.celkovotext.config(state="disabled")
+
+root = tk.Tk()
+app = TriednyFond(root)
